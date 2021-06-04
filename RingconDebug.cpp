@@ -5,6 +5,19 @@
 unsigned char buf[0x40];
 
 
+struct brcm_hdr {
+	uint8_t cmd;
+	uint8_t rumble[9];
+};
+
+struct brcm_cmd_01 {
+	uint8_t subcmd;
+	uint32_t offset;
+	uint8_t size;
+};
+
+int timing_byte = 0x0;
+
 void step0() {
 	memset(buf, 0, 0x40);
 	// set blocking to ensure command is recieved:
@@ -90,11 +103,11 @@ void step3() {
 		int res = 0;
 
 		memset(buf, 0, sizeof(buf));
-		//auto hdr = (brcm_hdr*)buf;
-		//auto pkt = (brcm_cmd_01*)(hdr+1);
-		//hdr->cmd = 0x01;
-		//hdr->rumble[0] = timing_byte & 0xF;
-		//timing_byte++;
+		auto hdr = (brcm_hdr*)buf;
+		auto pkt = (brcm_cmd_01*)(hdr+1);
+		hdr->cmd = 0x01;
+		hdr->rumble[0] = timing_byte & 0xF;
+		timing_byte++;
 		buf[10] = 0x21;
 		buf[11] = 0x21;
 		buf[12] = 0x00;
@@ -144,10 +157,10 @@ void step5() {
 	int res = 0;
 
 	memset(buf, 0, sizeof(buf));
-	//auto hdr = (brcm_hdr*)buf;
-	//hdr->cmd = 0x01;
-	//hdr->rumble[0] = timing_byte & 0xF;
-	//timing_byte++;
+	auto hdr = (brcm_hdr*)buf;
+	hdr->cmd = 0x01;
+	hdr->rumble[0] = timing_byte & 0xF;
+	timing_byte++;
 	buf[10] = 0x21;
 	buf[11] = 0x21;
 	buf[12] = 0x01;
@@ -191,10 +204,10 @@ void step6() {
 		int res = 0;
 
 		memset(buf, 0, sizeof(buf));
-		//auto hdr = (brcm_hdr*)buf;
-		//hdr->cmd = 0x01;
-		//hdr->rumble[0] = timing_byte & 0xF;
-		//timing_byte++;
+		auto hdr = (brcm_hdr*)buf;
+		hdr->cmd = 0x01;
+		hdr->rumble[0] = timing_byte & 0xF;
+		timing_byte++;
 		buf[10] = 0x59;
 
 		/*for (int i = 0; i <= 48; i++) {
@@ -285,10 +298,10 @@ void step7() {
 		//int res = 0;
 
 		memset(buf, 0, sizeof(buf));
-		//auto hdr = (brcm_hdr*)buf;
-		//hdr->cmd = 0x01;
-		//hdr->rumble[0] = timing_byte & 0xF;
-		//timing_byte++;
+		auto hdr = (brcm_hdr*)buf;
+		hdr->cmd = 0x01;
+		hdr->rumble[0] = timing_byte & 0xF;
+		timing_byte++;
 		buf[10] = 0x5C;
 		buf[11] = 0x06;
 		buf[12] = 0x03;
@@ -361,10 +374,10 @@ void step8() {
 		//int res = 0;
 
 		memset(buf, 0, sizeof(buf));
-		//auto hdr = (brcm_hdr*)buf;
-		//hdr->cmd = 0x01;
-		//hdr->rumble[0] = timing_byte & 0xF;
-		//timing_byte++;
+		auto hdr = (brcm_hdr*)buf;
+		hdr->cmd = 0x01;
+		hdr->rumble[0] = timing_byte & 0xF;
+		timing_byte++;
 		buf[10] = 0x5A;
 		buf[11] = 0x04;
 		buf[12] = 0x01;
@@ -411,10 +424,10 @@ void set_ext_config(int a, int b, int c, int d) {
 		//int res = 0;
 
 		memset(buf, 0, sizeof(buf));
-		//auto hdr = (brcm_hdr*)buf;
-		//hdr->cmd = 0x01;
-		//hdr->rumble[0] = timing_byte & 0xF;
-		//timing_byte++;
+		auto hdr = (brcm_hdr*)buf;
+		hdr->cmd = 0x01;
+		hdr->rumble[0] = timing_byte & 0xF;
+		timing_byte++;
 		buf[10] = 0x58;
 		buf[11] = a;
 		buf[12] = b;
@@ -509,8 +522,86 @@ void step13() {
 
 
 
+int get_spi_data(uint32_t offset, const uint16_t read_len) {
+	int res;
+	uint8_t buf[0x100];
+	//while (1) {
+	{
+		memset(buf, 0, sizeof(buf));
+		auto hdr = (brcm_hdr*)buf;
+		auto pkt = (brcm_cmd_01*)(hdr + 1);
+		hdr->cmd = 1;
+		hdr->rumble[0] = timing_byte;
+
+		buf[1] = timing_byte;
+
+		timing_byte++;
+		if (timing_byte > 0xF) {
+			timing_byte = 0x0;
+		}
+		pkt->subcmd = 0x10;
+		pkt->offset = offset;
+		pkt->size = read_len;
+
+		for (int i = 11; i < 22; ++i) {
+			buf[i] = buf[i + 3];
+		}
+
+		hid_write(buf, sizeof(*hdr) + sizeof(*pkt));
+
+		//res = hid_read(handle, buf, sizeof(buf));
+
+		//if ((*(uint16_t*)&buf[0xD] == 0x1090) && (*(uint32_t*)&buf[0xF] == offset)) {
+		//	break;
+		//}
+	}
+	//if (res >= 0x14 + read_len) {
+	//	for (int i = 0; i < read_len; i++) {
+	//		test_buf[i] = buf[0x14 + i];
+	//	}
+	//}
+
+	return 0;
+}
+
+void GetCalibrationData() {
+	printf("Getting calibration data...\n");
+	//memset(factory_stick_cal, 0, 0x12);
+	//memset(user_stick_cal, 0, 0x16);
+	//memset(sensor_model, 0, 0x6);
+	//memset(stick_model, 0, 0x12);
+	//memset(factory_sensor_cal, 0, 0x18);
+	//memset(user_sensor_cal, 0, 0x1A);
+	//memset(factory_sensor_cal_calm, 0, 0xC);
+	//memset(user_sensor_cal_calm, 0, 0xC);
+	//memset(sensor_cal, 0, sizeof(sensor_cal));
+	//memset(stick_cal_x_l, 0, sizeof(stick_cal_x_l));
+	//memset(stick_cal_y_l, 0, sizeof(stick_cal_y_l));
+	//memset(stick_cal_x_r, 0, sizeof(stick_cal_x_r));
+	//memset(stick_cal_y_r, 0, sizeof(stick_cal_y_r));
+
+	printf("0x6020, 0x18\n");
+	get_spi_data(0x6020, 0x18);
+	printf("0x603D, 0x12\n");
+	get_spi_data(0x603D, 0x12);
+	printf("0x6080, 0x6\n");
+	get_spi_data(0x6080, 0x6);
+	printf("0x6086, 0x12\n");
+	get_spi_data(0x6086, 0x12);
+	printf("0x6098, 0x12\n");
+	get_spi_data(0x6098, 0x12);
+	printf("0x8010, 0x16\n");
+	get_spi_data(0x8010, 0x16);
+	printf("0x8026, 0x1A\n");
+	get_spi_data(0x8026, 0x1A);
+}
+
+
+
 int main()
 {
+	//GetCalibrationData();
+
 	printf("\n");
 	printf("###############################\n");
 	printf("# Step[0]                     #\n");
